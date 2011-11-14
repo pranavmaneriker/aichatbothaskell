@@ -19,6 +19,17 @@ parseAimlFile filePath = do{ p<-(parseFromFile parseAiml filePath)
 				    Right x -> return x
 			   }
 
+-- (<@>) :: Parser String -> Parser String -> Parser String
+-- (p1 <@> p2) = case (parse p1 "" str) of
+-- 		       Left err -> p2
+-- 		       Right x -> case (parse p2 "" str) of
+-- 					Left err -> p1
+-- 					Right y -> if ( (length x) > (length y) )
+-- 						      then p2 else p1
+						     
+						     
+					
+
 aimlStart :: Parser String
 aimlStart = string "<aiml version=\"1.0\">"
 
