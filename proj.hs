@@ -5,12 +5,13 @@ import Text.ParserCombinators.Parsec.Char
 import System.Directory
 import Char
 import ParseAIML
-import BasicParsers
+import Directory
+import System.FilePath.Posix
 
-directory = "/home/saurabh/Documents/aimlnew"
-main = do{ parser<-superParser directory
+main = do{ dir<-getCurrentDirectory
+	 ; parser<-superParser $ dir++"/aiml"
 	 ; startChat parser
-}
+	 }
 	   
 startChat parser = do
 		      putStr "Enter your chat:"
@@ -48,10 +49,9 @@ superParser dir = do{ files<-getDirectoryContents dir
 getProperFileList :: String -> [String] -> [String]
 getProperFileList dir files = case files of
 				   [] -> []
-				   x:xs -> case x of
-						"." -> getProperFileList dir xs
-						".." -> getProperFileList dir xs
-						s -> (dir++("/"++s)):(getProperFileList dir xs)
+				   x:xs -> case (takeExtension x) of
+						".aiml" -> (dir++("/"++x)):(getProperFileList dir xs)
+						_ -> getProperFileList dir xs
 
 append :: String -> String -> String
 append st1 st2 = st1++st2
