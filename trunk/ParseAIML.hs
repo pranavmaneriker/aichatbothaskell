@@ -3,8 +3,12 @@ module ParseAIML where
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Char
 
-parseAimlFile :: String -> IO (Either ParseError [[String]])
-parseAimlFile filePath = parseFromFile parseAiml filePath
+parseAimlFile :: String -> IO [[String]]
+parseAimlFile filePath = do{ p<-(parseFromFile parseAiml filePath)
+			   ; case p of
+				    Left _ -> return [["ERROR","ERROR"]]
+				    Right x -> return x
+			   }
 
 aimlStart :: Parser String
 aimlStart = string "<aiml version=\"1.0\">"
