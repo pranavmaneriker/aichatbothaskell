@@ -4,6 +4,7 @@ import Brain
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Char
 import Char
+import GenParsers
 
 main = startChat
 startChat = do
@@ -30,17 +31,8 @@ preprocess msg = return (fmap toUpper msg)
 
 -- Defining parsers
 
-parseString :: String -> Parser String
-parseString str = string str
-
-parseHi :: Parser String
-parseHi = parseString "HI"
-
 anyString :: Parser String
 anyString = many1 anyChar
-	      
-word :: Parser String
-word = many1 letter
 
 sentence :: Parser [String]
 sentence = do{ words <- sepBy1 word separator
@@ -64,8 +56,13 @@ parseAfterStar :: Parser String -> Parser String -- Parses *p
 parseAfterStar p = manyTill (letter <|> punctuation <|> space) (try p)
 
 getResponse :: String -> IO String
-getResponse input = case (parse (parseAfterStar parseHi) "" input) of
-			   Left err -> do{ return unknownInput
-					 }
-			   Right x  -> return "Hi"
+getResponse input = do{ p<-(genParserFromAimlFile "/home/saurabh/Documents/aiml/ai.aiml")
+		      ;	case (parse p "" input) of
+			    Left _ -> return "PATTERN MISMATCH"
+			    Right x -> return x
+		      }
+-- getResponse input = case (parse (parseAfterStar parseHi) "" input) of
+-- 			   Left err -> do{ return unknownInput
+-- 					 }
+-- 			   Right x  -> return "Hi"
 
