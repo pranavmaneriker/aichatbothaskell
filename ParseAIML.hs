@@ -3,10 +3,18 @@ module ParseAIML where
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Char
 
-parseAimlFile :: String -> IO [[String]]
+parseAimlFiles :: [String] -> IO (Parser String)
+parseAimlFiles files = case files of
+			    [] -> return pzero
+			    x:xs -> do{ p<-parseAimlFile x
+				      ; ps<-parseAimlFiles xs
+				      ; return (p <|> ps)
+				      }
+
+parseAimlFile :: String -> IO (Parser String)
 parseAimlFile filePath = do{ p<-(parseFromFile parseAiml filePath)
 			   ; case p of
-				    Left _ -> return [["ERROR","ERROR"]]
+				    Left _ -> return pzero
 				    Right x -> return x
 			   }
 
@@ -61,14 +69,14 @@ comments = do{ many (space <|> newline)
 	     }
 	   <|> many (space <|> newline)
 
-parseAiml :: Parser [[String]]
+parseAiml :: Parser (Parser String)
 parseAiml = do{ manyTill anyChar (try aimlStart)
 	      ; comments
 	      ; categories <- manyTill cat (try aimlEnd)
-	      ; return categories
+	      ; return (choice categories)
 	      }
 
-category :: Parser [String]
+category :: Parser (Parser String)
 category = do{ catStart
 	     ; skipMany (space <|> newline)
 	     ; pat<-pattern
@@ -78,11 +86,11 @@ category = do{ catStart
 	     ; temp<-template
 	     ; skipMany (space <|> newline)
 	     ; catEnd
-	     ; return [pat,th,temp]
+	     ; return (buildParser pat th temp)
 	     }
 
 	      
-cat :: Parser [String]
+cat :: Parser (Parser String)
 cat = do{ skipMany (space <|> newline)
 	; c<-category
 	; skipMany (space <|> newline)
@@ -109,3 +117,9 @@ that	 = do{ thatStart
 	    
 eitherThatOrEmptyString :: Parser String
 eitherThatOrEmptyString = (try that) <|> (return "")
+
+buildParser :: String -> String -> String -> Parser String
+buildParser pat th temp = try (do{ string pat
+				 ; return temp
+				 }
+			      )

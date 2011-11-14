@@ -1,24 +1,29 @@
 module Main where
 
-import Brain
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Char
+import System.Directory
 import Char
-import GenParsers
+import ParseAIML
+import BasicParsers
 
-main = startChat
-startChat = do
-		putStr "Enter your chat:"
-		usermsg<-getUserMsg
-		processedMsg<-(preprocess usermsg)
-		flag<-isBye processedMsg
-		putStr "Bot:"
-		reply<-getResponse processedMsg
-		sendResponse reply
-		if flag then
-		  stopChat
-		  else do
-		    startChat
+directory = "/home/saurabh/Documents/aimlnew"
+main = do{ parser<-superParser directory
+	 ; startChat parser
+}
+	   
+startChat parser = do
+		      putStr "Enter your chat:"
+		      usermsg<-getUserMsg
+		      processedMsg<-(preprocess usermsg)
+		      flag<-isBye processedMsg
+		      putStr "Bot:"
+		      reply<-getResponse parser processedMsg
+		      sendResponse reply
+		      if flag then
+			stopChat
+			else do
+			  startChat parser
 
 
 getUserMsg = getLine
@@ -29,40 +34,24 @@ isBye msg = return ((compare msg "BYE") == EQ)
 preprocess :: String -> IO String
 preprocess msg = return (fmap toUpper msg)
 
--- Defining parsers
+getResponse :: Parser String -> String -> IO String
+getResponse parser input = do{ case (parse parser "" input) of
+				  Left _ -> return "PATTERN MISMATCH"
+				  Right x -> return x
+			     }
+		      
+superParser :: String -> IO (Parser String)
+superParser dir = do{ files<-getDirectoryContents dir
+		    ; parseAimlFiles $ getProperFileList dir files
+		    }
 
-anyString :: Parser String
-anyString = many1 anyChar
+getProperFileList :: String -> [String] -> [String]
+getProperFileList dir files = case files of
+				   [] -> []
+				   x:xs -> case x of
+						"." -> getProperFileList dir xs
+						".." -> getProperFileList dir xs
+						s -> (dir++("/"++s)):(getProperFileList dir xs)
 
-sentence :: Parser [String]
-sentence = do{ words <- sepBy1 word separator
-	     ; many punctuation
-             ; return words
-             }
-                
-separator :: Parser ()
-separator = skipMany1 (space <|> punctuation)
-
-punctuation :: Parser Char
-punctuation = 	oneOf ".,?!"
-
-parserContainingp :: Parser a -> Parser a
-parserContainingp p = do{ 
-			  found<-p
-			; return found
-			}
-
-parseAfterStar :: Parser String -> Parser String -- Parses *p
-parseAfterStar p = manyTill (letter <|> punctuation <|> space) (try p)
-
-getResponse :: String -> IO String
-getResponse input = do{ p<-(genParserFromAimlFile "/home/saurabh/Documents/aiml/ai.aiml")
-		      ;	case (parse p "" input) of
-			    Left _ -> return "PATTERN MISMATCH"
-			    Right x -> return x
-		      }
--- getResponse input = case (parse (parseAfterStar parseHi) "" input) of
--- 			   Left err -> do{ return unknownInput
--- 					 }
--- 			   Right x  -> return "Hi"
-
+append :: String -> String -> String
+append st1 st2 = st1++st2
