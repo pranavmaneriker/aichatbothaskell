@@ -1,0 +1,109 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+<title>Chatty - The bot</title>
+<style type="text/css" media="all">@import "layout.css";</style>
+<script type="text/javascript">
+var lastChatTime = "";
+var countDownCtr = 10;
+var started = false;
+
+function countDown()
+{
+	countDownCtr--;
+	if(countDownCtr <= 0)
+	{
+		if(lastChatTime != "")
+			document.getElementById('chatDiv').innerHTML+="<span style=\"font-size:10px;color:#555555;\">Last chat sent at " + lastChatTime + "</span><br /><br />";
+		started = false;
+	}
+	else
+		setTimeout("countDown()", 1000);
+}
+
+function sendChat()
+{
+	if(document.getElementById('chatText').value == "")
+		return false;
+		
+	var xmlhttp;
+	if (window.XMLHttpRequest)
+	{
+	  xmlhttp=new XMLHttpRequest();
+	}
+	else
+	{
+	  xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+	}
+	xmlhttp.onreadystatechange=function()
+	{
+		if (xmlhttp.readyState==4 && xmlhttp.status==200)
+		{
+			var chatDiv = document.getElementById('chatDiv');
+			chatDiv.innerHTML+=xmlhttp.responseText;	
+			chatDiv.scrollTop = chatDiv.scrollHeight;
+		}
+	}
+	
+	params = "question=" + document.getElementById('chatText').value;
+	xmlhttp.open("POST","./../../cgi-bin/bot.cgi",true);
+	xmlhttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+	xmlhttp.send(params);
+	document.getElementById('chatText').value = "";
+	
+	var currentTime = new Date()
+	var hours = currentTime.getHours()
+	var minutes = currentTime.getMinutes()
+	if (minutes < 10){
+		minutes = "0" + minutes
+	}
+	if (hours < 10){
+		hours = "0" + hours
+	}
+	lastChatTime = hours + ":" + minutes + " ";
+	if(hours > 11){
+		lastChatTime += "PM";
+	} else {
+		lastChatTime += "AM";
+	}
+	countDownCtr = 10;
+	if(!started)
+	{
+		setTimeout("countDown()", 1000);
+		started = true;
+	}
+		
+	return false;
+}
+</script>
+</head>
+
+<body>
+
+<div id="Header"><a href="." title="Chatty's Home">Chatty's Home</a></div>
+
+<div id="Content">
+	<div id="chatDiv" style="height:300px;width:500px;overflow:auto;background-color:#DDDDDD;border:1px solid #555555;">
+	</div>
+	
+	<br /><br />
+
+	<form onsubmit="return sendChat()">
+		<input type="text" id="chatText" name="chatText" style="width:445px;" />
+		<input type="submit" value="Send" style="width:50px;" />
+	</form>	
+</div>
+
+<div id="Menu">
+	<a href="index.html" title="Introduction">Introduction</a><br />
+	<a href="chat.html" title="Chat Now!!">Chat Now!!</a><br />
+	<a href="authors.html" title="About the Authors">About the Authors</a><br />
+	<a href="references.html" title="References">References</a><br />
+</div>
+
+</body>
+
+</html>
