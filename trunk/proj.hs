@@ -16,10 +16,10 @@ main = do{ dir<-getCurrentDirectory
 startChat parser = do
 		      putStr "Enter your chat:"
 		      usermsg<-getUserMsg
-		      processedMsg<-(preprocess usermsg)
-		      flag<-isBye processedMsg
+		      let processedMsg = (preprocess usermsg)
+		      let flag = isBye processedMsg
 		      putStr "Bot:"
-		      reply<-getResponse parser processedMsg
+		      let reply = getResponse parser processedMsg
 		      sendResponse reply
 		      if flag then
 			stopChat
@@ -30,15 +30,15 @@ startChat parser = do
 getUserMsg = getLine
 sendResponse = putStrLn
 stopChat = return ()
-isBye msg = return ((compare msg "BYE") == EQ)
+isBye msg = ((compare msg "BYE") == EQ)
 
-preprocess :: String -> IO String
-preprocess msg = return (fmap toUpper msg)
+preprocess :: String -> String
+preprocess msg = (fmap toUpper msg)
 
-getResponse :: Parser String -> String -> IO String
+getResponse :: Parser String -> String -> String
 getResponse parser input = do{ case (parse parser "" input) of
-				  Left _ -> return "PATTERN MISMATCH"
-				  Right x -> return x
+				  Left _ -> "PATTERN MISMATCH"
+				  Right x -> x
 			     }
 		      
 superParser :: String -> IO (Parser String)
