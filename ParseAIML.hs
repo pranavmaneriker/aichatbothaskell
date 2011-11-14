@@ -2,6 +2,7 @@ module ParseAIML where
 
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Char
+import ParsePattern
 
 parseAimlFiles :: [String] -> IO (Parser String)
 parseAimlFiles files = case files of
@@ -119,7 +120,7 @@ eitherThatOrEmptyString :: Parser String
 eitherThatOrEmptyString = (try that) <|> (return "")
 
 buildParser :: String -> String -> String -> Parser String
-buildParser pat th temp = try (do{ string pat
+buildParser pat th temp = try (do{ genParserFromPattern pat
 				 ; return temp
 				 }
 			      )
