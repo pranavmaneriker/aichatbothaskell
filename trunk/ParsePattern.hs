@@ -14,7 +14,7 @@ underscore :: Parser String
 underscore = do{ char '_'
 	       ; return "_"
 	       }
-
+		   
 wordOrStarOrUnderscore :: Parser String
 wordOrStarOrUnderscore = word <|> star <|> underscore
 
@@ -57,4 +57,4 @@ genParserFromWords w = case w of
 					 "_" -> do{ s<-manyTill anyChar (try (genParserFromWords xs))
 						  ; return s
 						  }
-					 _   -> (string x) >> (skipMany space) >> (genParserFromWords xs)
+					 _   -> (string x) >> (skipMany (space <|> punctuation)) >> (genParserFromWords xs)
