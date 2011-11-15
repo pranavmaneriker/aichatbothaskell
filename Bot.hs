@@ -8,28 +8,67 @@ import ParseAIML
 import Directory
 import System.FilePath.Posix
 
-main2 = do{ dir<-getCurrentDirectory
+import Control.Monad (unless)
+import Network.Socket hiding (recv)
+import qualified Data.ByteString as S
+import Network.Socket.ByteString (recv, sendAll)
+import qualified Data.ByteString.Char8 as C
+
+port = "3000"
+
+main = do{ dir<-getCurrentDirectory
 	 ; parser<-superParser $ dir++"/aiml"
 	 ; startChat parser
 	 }
 	   
-startChat parser = do
-		      putStr "Enter your chat:"
-		      usermsg<-getUserMsg
-		      let processedMsg = (preprocess usermsg)
-		      let flag = isBye processedMsg
-		      putStr "Bot:"
-		      let reply = getResponse parser processedMsg ["",""]
-		      sendResponse reply
-		      if flag then
-			stopChat
-			else do
-			  startChat parser
+-- startChat parser = do
+		      -- putStr "Enter your chat:"
+		      -- usermsg<-getUserMsg
+		      -- let processedMsg = (preprocess usermsg)
+		      -- let flag = isBye processedMsg
+		      -- putStr "Bot:"
+		      -- let reply = getResponse parser processedMsg ["",""]
+		      -- sendResponse reply
+		      -- if flag then
+			-- stopChat
+			-- else do
+			  -- startChat parser
+
+startChat parser = withSocketsDo $
+    do {
+	   ; addrinfos <- getAddrInfo
+                    (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
+                    Nothing (Just port)
+       ; let serveraddr = head addrinfos
+       ; sock <- socket (addrFamily serveraddr) Stream defaultProtocol
+       ; bindSocket sock (addrAddress serveraddr)
+       ; listen sock 1
+	   ; loop sock parser
+       ; sClose sock
+	   }
+
+loop sock parser = do	 {
+						 ;	putStrLn "Waiting for connection..."
+						 ;	(conn, _) <- accept sock
+						 ;	putStrLn "Client connected."
+						 ;	talk conn parser
+						 ;	sClose conn
+						 ;	putStrLn "Client disconnected."
+						 ;	loop sock parser
+						 }
+				where
+				  talk conn parser =
+									  do {
+										 ; msg <- recv conn 1024
+										 ; let processedMsg = (preprocess $ C.unpack msg)
+										 ; let reply = C.pack $ getResponse parser processedMsg ["",""]
+										 ; unless (S.null msg) $ sendAll conn reply >> talk conn parser
+										 }
 
 
 getUserMsg = getLine
 sendResponse = putStrLn
-stopChat = return ()
+--stopChat = return ()
 isBye msg = ((compare msg "BYE") == EQ)
 
 preprocess :: String -> String
