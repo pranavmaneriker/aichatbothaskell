@@ -2,7 +2,6 @@ module Main where
 
 import Network.CGI
 import Text.XHtml
-import System.IO.Unsafe
 
 import Network.Socket hiding (recv)
 import Network.Socket.ByteString (recv, sendAll)
@@ -12,7 +11,9 @@ port = "3000"
  
 inputForm = ("The bot is unavailable at the moment due to a problem with the request/server. Please check back later or check the format of your request." ++ "<br />")
  
-greet n = ("<i>You: " ++ n ++ "</i><br />" ++ "Bot: " ++ unsafePerformIO (ask n) ++ "<br />")
+greet n = do
+			m <- liftIO (ask n)
+			return ("<i>You: " ++ n ++ "</i><br />" ++ "Bot: " ++ m ++ "<br />")
 
 ask usermsg = withSocketsDo $
 							do addrinfos <- getAddrInfo Nothing (Just "") (Just port)
@@ -25,7 +26,7 @@ ask usermsg = withSocketsDo $
 							   return (C.unpack msg)
 				
 cgiMain = do{ mn <- getInput "question"
-			; let x = maybe inputForm greet mn
+			; x <- maybe (return inputForm) greet mn
             ; output x
 			}
 			
