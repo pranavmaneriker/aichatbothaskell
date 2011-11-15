@@ -21,68 +21,77 @@ main = do{ dir<-getCurrentDirectory
 	 ; startChat parser
 	 }
 	   
--- startChat parser = do
-		      -- putStr "Enter your chat:"
-		      -- usermsg<-getUserMsg
-		      -- let processedMsg = (preprocess usermsg)
-		      -- let flag = isBye processedMsg
-		      -- putStr "Bot:"
-		      -- let reply = getResponse parser processedMsg ["",""]
-		      -- sendResponse reply
-		      -- if flag then
-			-- stopChat
-			-- else do
-			  -- startChat parser
+startChat parser = do
+		      putStr "Enter your chat:"
+		      usermsg<-getUserMsg
+		      let processedMsg = (preProcess usermsg)
+		      let flag = isBye processedMsg
+		      putStr "Bot:"
+		      let reply = postProcess $ getResponse parser processedMsg ["","",""]
+		      sendResponse reply
+		      if flag then
+			stopChat
+			else do
+			  startChat parser
 
-startChat parser = withSocketsDo $
-    do {
-	   ; addrinfos <- getAddrInfo
-                    (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
-                    Nothing (Just port)
-       ; let serveraddr = head addrinfos
-       ; sock <- socket (addrFamily serveraddr) Stream defaultProtocol
-       ; bindSocket sock (addrAddress serveraddr)
-       ; listen sock 1
-	   ; loop sock parser
-       ; sClose sock
-	   }
-
-loop sock parser = do	 {
-						 ;	putStrLn "Waiting for connection..."
-						 ;	(conn, _) <- accept sock
-						 ;	putStrLn "Client connected."
-						 ;	talk conn parser
-						 ;	sClose conn
-						 ;	putStrLn "Client disconnected."
-						 ;	loop sock parser
-						 }
-				where
-				  talk conn parser =
-									  do {
-										 ; msg <- recv conn 1024
-										 ; let processedMsg = (preprocess $ C.unpack msg)
-										 ; let reply = C.pack $ getResponse parser processedMsg ["",""]
-										 ; unless (S.null msg) $ sendAll conn reply >> talk conn parser
-										 }
+-- startChat parser = withSocketsDo $
+--     do {
+-- 	   ; addrinfos <- getAddrInfo
+--                     (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
+--                     Nothing (Just port)
+--        ; let serveraddr = head addrinfos
+--        ; sock <- socket (addrFamily serveraddr) Stream defaultProtocol
+--        ; bindSocket sock (addrAddress serveraddr)
+--        ; listen sock 1
+-- 	   ; loop sock parser
+--        ; sClose sock
+-- 	   }
+-- 
+-- loop sock parser = do	 {
+-- 						 ;	putStrLn "Waiting for connection..."
+-- 						 ;	(conn, _) <- accept sock
+-- 						 ;	putStrLn "Client connected."
+-- 						 ;	talk conn parser
+-- 						 ;	sClose conn
+-- 						 ;	putStrLn "Client disconnected."
+-- 						 ;	loop sock parser
+-- 						 }
+-- 				where
+-- 				  talk conn parser =
+-- 									  do {
+-- 										 ; msg <- recv conn 1024
+-- 										 ; let processedMsg = (preProcess $ C.unpack msg)
+-- 										 ; let reply = C.pack $ postProcess $ getResponse parser processedMsg ["",""]
+-- 										 ; unless (S.null msg) $ sendAll conn reply >> talk conn parser
+-- 										 }
 
 
 getUserMsg = getLine
 sendResponse = putStrLn
---stopChat = return ()
+stopChat = return ()
 isBye msg = ((compare msg "BYE") == EQ)
 
-preprocess :: String -> String
-preprocess msg = (fmap toUpper msg)
+preProcess :: String -> String
+preProcess msg = (fmap toUpper msg)
+
+postProcess :: String -> String
+postProcess msg = case (parse random "" msg) of
+		       Left _ -> msg
+		       Right a -> a
 
 getResponse :: [Parser [String]] -> String -> [String] -> String
 getResponse parser input str = do{
 				  case parser of
-					[] -> head $ tail str
+					[] -> show str -- head $ tail $ tail str
 					x:xs -> case (parse x "" input) of
 						      Left _ -> getResponse xs input str
-						      Right a -> if (length (head a)) > (length (head str))
+						      Right a -> if ((length (head a)) > (length (head str)))
 								    then getResponse xs input a
-								    else getResponse xs input str
+								    else if ((length (head a)) < (length (head str)))
+									    then getResponse xs input str
+									    else if ((length (head (tail a))) < (length (head(tail str))))
+										 then getResponse xs input a
+										 else getResponse xs input str
 			     }
 		      
 superParser :: String -> IO [Parser [String]]
