@@ -4,6 +4,8 @@ import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Char
 import ParsePattern
 
+import Random
+
 parseAimlFiles :: [String] -> IO [Parser [String]]
 parseAimlFiles files = case files of
 			    [] -> return [] --- $ [fail ["",""]]
@@ -72,6 +74,18 @@ commentStart = string "<!--"
 commentEnd :: Parser String
 commentEnd = string "-->"
 
+randomStart :: Parser String
+randomStart = string "<random>"
+
+randomEnd :: Parser String
+randomEnd = string "</random>"
+
+liStart :: Parser String
+liStart = string "<li>"
+
+liEnd :: Parser String
+liEnd = string "</li>"
+
 comment :: Parser String
 comment = do{ try commentStart
 	    ; manyTill anyChar (try commentEnd)
@@ -132,13 +146,42 @@ that	 = do{ thatStart
 	    ; t<-manyTill anyChar (try thatEnd)
 	    ; return t
 	    }
-	    
+
+li :: Parser String
+li = do{ liStart
+       ; liStr<-manyTill anyChar (try liEnd)
+       ; return liStr
+       }
+
+liWithSpace :: Parser String
+liWithSpace = do{ skipMany space
+		; t <- li
+		; skipMany space
+		; return t
+		}
+
+random :: Parser String
+random = do{ randomStart
+	   ; t<-manyTill li (try randomEnd)
+	   ; let r = mkStdGen 32
+	   ; let (rawTargetNum, _) = next r
+	   ; let index = rawTargetNum `mod` (length t)
+	   ; return $ elementAt index t
+	   }
+	  <|>
+	  do{ many anyChar }
+	  
+elementAt :: Int -> [String] -> String
+elementAt index str = case index of
+			   0 -> head str
+			   _ -> elementAt (index-1) (tail str)
+
 eitherThatOrEmptyString :: Parser String
 eitherThatOrEmptyString = (try that) <|> (return "")
 
 buildParser :: String -> String -> String -> Parser [String]
-buildParser pat th temp = try (do{ -- p<-(genParserFromPattern pat)
-				   p<-(string pat) 
-				 ; return [p,temp]
+buildParser pat th temp = try (do{ (p1,pstar)<-(genParserFromPattern pat ("",""))
+				   --p<-(string pat) 
+				 ; return [p1,pstar,temp]
 				 }
 			      )
