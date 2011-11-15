@@ -4,20 +4,26 @@ import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Char
 import ParsePattern
 
-parseAimlFiles :: [String] -> IO (Parser String)
+parseAimlFiles :: [String] -> IO [Parser [String]]
 parseAimlFiles files = case files of
-			    [] -> return pzero
+			    [] -> return [] --- $ [fail ["",""]]
 			    x:xs -> do{ p<-parseAimlFile x
 				      ; ps<-parseAimlFiles xs
-				      ; return (p <|> ps)
+				      ; return $ joinParsers p ps
 				      }
 
-parseAimlFile :: String -> IO (Parser String)
+parseAimlFile :: String -> IO [Parser [String]]
 parseAimlFile filePath = do{ p<-(parseFromFile parseAiml filePath)
 			   ; case p of
-				    Left _ -> return pzero
+				    Left _ -> return [] -- $ fail ["",""]
 				    Right x -> return x
 			   }
+
+
+joinParsers :: [Parser [String]] -> [Parser [String]] -> [Parser [String]]
+joinParsers p1 p2 = case p1 of
+			 [] -> p2
+			 x:xs -> joinParsers xs $ x:p2
 
 -- (<@>) :: Parser String -> Parser String -> Parser String
 -- (p1 <@> p2) = case (parse p1 "" str) of
@@ -81,14 +87,14 @@ comments = do{ many (space <|> newline)
 	     }
 	   <|> many (space <|> newline)
 
-parseAiml :: Parser (Parser String)
+parseAiml :: Parser [Parser [String]]
 parseAiml = do{ manyTill anyChar (try aimlStart)
 	      ; comments
 	      ; categories <- manyTill cat (try aimlEnd)
-	      ; return (choice categories)
+	      ; return categories
 	      }
 
-category :: Parser (Parser String)
+category :: Parser (Parser [String])
 category = do{ catStart
 	     ; skipMany (space <|> newline)
 	     ; pat<-pattern
@@ -102,7 +108,7 @@ category = do{ catStart
 	     }
 
 	      
-cat :: Parser (Parser String)
+cat :: Parser (Parser [String])
 cat = do{ skipMany (space <|> newline)
 	; c<-category
 	; skipMany (space <|> newline)
@@ -130,8 +136,9 @@ that	 = do{ thatStart
 eitherThatOrEmptyString :: Parser String
 eitherThatOrEmptyString = (try that) <|> (return "")
 
-buildParser :: String -> String -> String -> Parser String
-buildParser pat th temp = try (do{ genParserFromPattern pat
-				 ; return temp
+buildParser :: String -> String -> String -> Parser [String]
+buildParser pat th temp = try (do{ -- p<-(genParserFromPattern pat)
+				   p<-(string pat) 
+				 ; return [p,temp]
 				 }
 			      )
