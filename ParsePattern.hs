@@ -57,4 +57,4 @@ genParserFromWords w = case w of
 					 "_" -> do{ s<-manyTill anyChar (try (genParserFromWords xs))
 						  ; return s
 						  }
-					 _   -> (string x) >> (genParserFromWords xs)
+					 _   -> (string x) >> (skipMany space) >> (genParserFromWords xs)

@@ -19,7 +19,7 @@ startChat parser = do
 		      let processedMsg = (preprocess usermsg)
 		      let flag = isBye processedMsg
 		      putStr "Bot:"
-		      let reply = getResponse parser processedMsg
+		      let reply = getResponse parser processedMsg ["",""]
 		      sendResponse reply
 		      if flag then
 			stopChat
@@ -35,13 +35,18 @@ isBye msg = ((compare msg "BYE") == EQ)
 preprocess :: String -> String
 preprocess msg = (fmap toUpper msg)
 
-getResponse :: Parser String -> String -> String
-getResponse parser input = do{ case (parse parser "" input) of
-				  Left _ -> "PATTERN MISMATCH"
-				  Right x -> x
+getResponse :: [Parser [String]] -> String -> [String] -> String
+getResponse parser input str = do{
+				  case parser of
+					[] -> head $ tail str
+					x:xs -> case (parse x "" input) of
+						      Left _ -> getResponse xs input str
+						      Right a -> if (length (head a)) > (length (head str))
+								    then getResponse xs input a
+								    else getResponse xs input str
 			     }
 		      
-superParser :: String -> IO (Parser String)
+superParser :: String -> IO [Parser [String]]
 superParser dir = do{ files<-getDirectoryContents dir
 		    ; parseAimlFiles $ getProperFileList dir files
 		    }
