@@ -67,7 +67,6 @@ eol :: (String,String) -> Parser (String,String)
 eol (p,pstar) = do{ eof
 		  ; return (p,pstar)
 		  }
-	 
 
 genParserFromWords :: [String] -> (String,String) -> Parser (String,String)
 genParserFromWords w (p,pstar) = case w of
@@ -79,5 +78,4 @@ genParserFromWords w (p,pstar) = case w of
 							  }
 						_   -> do{ p1<-(string x)
 							 ; (skipMany (space <|> punctuation))
-							 ; (genParserFromWords xs (p++p1,pstar))
-							 }
+							 ; (genParserFromWords xs (p++p1,pstar)) }

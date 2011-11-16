@@ -7,6 +7,7 @@ import Char
 import ParseAIML
 import Directory
 import System.FilePath.Posix
+import Data.List
 
 import Control.Monad (unless)
 import Network.Socket hiding (recv)
@@ -27,7 +28,7 @@ startChat parser = do
 		      let processedMsg = (preProcess usermsg)
 		      let flag = isBye processedMsg
 		      putStr "Bot:"
-		      let reply = postProcess $ getResponse parser processedMsg ["","",""]
+		      let reply = getResponse parser parser processedMsg ["","",""]
 		      sendResponse reply
 		      if flag then
 			stopChat
@@ -35,35 +36,35 @@ startChat parser = do
 			  startChat parser
 
 -- startChat parser = withSocketsDo $
---     do {
--- 	   ; addrinfos <- getAddrInfo
---                     (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
---                     Nothing (Just port)
---        ; let serveraddr = head addrinfos
---        ; sock <- socket (addrFamily serveraddr) Stream defaultProtocol
---        ; bindSocket sock (addrAddress serveraddr)
---        ; listen sock 1
--- 	   ; loop sock parser
---        ; sClose sock
--- 	   }
--- 
--- loop sock parser = do	 {
--- 						 ;	putStrLn "Waiting for connection..."
--- 						 ;	(conn, _) <- accept sock
--- 						 ;	putStrLn "Client connected."
--- 						 ;	talk conn parser
--- 						 ;	sClose conn
--- 						 ;	putStrLn "Client disconnected."
--- 						 ;	loop sock parser
--- 						 }
--- 				where
--- 				  talk conn parser =
--- 									  do {
--- 										 ; msg <- recv conn 1024
--- 										 ; let processedMsg = (preProcess $ C.unpack msg)
--- 										 ; let reply = C.pack $ postProcess $ getResponse parser processedMsg ["",""]
--- 										 ; unless (S.null msg) $ sendAll conn reply >> talk conn parser
--- 										 }
+    -- do {
+	   -- ; addrinfos <- getAddrInfo
+                    -- (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
+                    -- Nothing (Just port)
+       -- ; let serveraddr = head addrinfos
+       -- ; sock <- socket (addrFamily serveraddr) Stream defaultProtocol
+       -- ; bindSocket sock (addrAddress serveraddr)
+       -- ; listen sock 1
+	   -- ; loop sock parser
+       -- ; sClose sock
+	   -- }
+
+loop sock parser = do	 {
+						 ;	putStrLn "Waiting for connection..."
+						 ;	(conn, _) <- accept sock
+						 ;	putStrLn "Client connected."
+						 ;	talk conn parser
+						 ;	sClose conn
+						 ;	putStrLn "Client disconnected."
+						 ;	loop sock parser
+						 }
+				where
+				  talk conn parser =
+									  do {
+										 ; msg <- recv conn 1024
+										 ; let processedMsg = (preProcess $ C.unpack msg)
+										 ; let reply = C.pack $ getResponse parser parser processedMsg ["","",""]
+										 ; unless (S.null msg) $ sendAll conn reply >> talk conn parser
+										 }
 
 
 getUserMsg = getLine
@@ -72,31 +73,54 @@ stopChat = return ()
 isBye msg = ((compare msg "BYE") == EQ)
 
 preProcess :: String -> String
-preProcess msg = (fmap toUpper msg)
+preProcess msg = case (parse (manyTill anyChar (oneOf ".?!,")) "" (fmap toUpper msg)) of
+					Left _ -> (fmap toUpper msg)
+					Right a -> a
 
-postProcess :: String -> String
-postProcess msg = case (parse random "" msg) of
-		       Left _ -> msg
-		       Right a -> a
+postProcess :: [Parser [String]] -> String -> String
+postProcess parser msg = finalMsg
+				where
+				 pickRandom = case (parse randomElement "" msg) of
+						Left _ -> msg
+						Right a -> a
+				 recursed = case (parse srai "" pickRandom) of
+						Left _ -> pickRandom
+						Right (p,a,n) -> p ++ (getResponse parser parser a ["","",""]) ++ n
+				 finalMsg = pickRandom --recursed
 
-getResponse :: [Parser [String]] -> String -> [String] -> String
-getResponse parser input str = do{
+lengthWOSpace = lengthWOSpace1 0
+				where
+					lengthWOSpace1 n str = case str of
+											[] -> n
+											x:xs -> if (x == ' ')
+														then lengthWOSpace1 n xs
+														else lengthWOSpace1 (n+1) xs
+														
+contains :: [String] -> String -> Bool
+contains strList str = (length $ intersect strList [str]) > 0
+														
+getResponse :: [Parser [String]] -> [Parser [String]] -> String -> [String] -> String
+getResponse parser parserCopy input str = do{
 				  case parser of
-					[] -> show str -- head $ tail $ tail str
+					[] -> finalMsg
+							where
+								finalMsg = postProcess parserCopy $ head $ tail $ tail str
 					x:xs -> case (parse x "" input) of
-						      Left _ -> getResponse xs input str
-						      Right a -> if ((length (head a)) > (length (head str)))
-								    then getResponse xs input a
-								    else if ((length (head a)) < (length (head str)))
-									    then getResponse xs input str
-									    else if ((length (head (tail a))) < (length (head(tail str))))
-										 then getResponse xs input a
-										 else getResponse xs input str
+						      Left _ -> getResponse xs parserCopy input str
+						      Right a -> if ((lengthWOSpace (head a)) > (lengthWOSpace (head str)))
+								    then getResponse xs parserCopy input a
+								    else if ((lengthWOSpace (head a)) < (lengthWOSpace (head str)))
+									    then getResponse xs parserCopy input str
+									    else if ((lengthWOSpace (head (tail a))) < (lengthWOSpace (head(tail str))))
+										 then getResponse xs parserCopy input a
+										 else getResponse xs parserCopy input str
 			     }
 		      
 superParser :: String -> IO [Parser [String]]
 superParser dir = do{ files<-getDirectoryContents dir
-		    ; parseAimlFiles $ getProperFileList dir files
+		    --; parserExact <- (parseAimlFiles (getProperFileList dir files) True)
+			; parser <-(parseAimlFiles (getProperFileList dir files) False)
+			; return parser
 		    }
 
 getProperFileList :: String -> [String] -> [String]

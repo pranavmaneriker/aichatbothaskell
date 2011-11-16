@@ -6,20 +6,20 @@ import ParsePattern
 
 import Random
 
-parseAimlFiles :: [String] -> IO [Parser [String]]
-parseAimlFiles files = case files of
-			    [] -> return [] --- $ [fail ["",""]]
-			    x:xs -> do{ p<-parseAimlFile x
-				      ; ps<-parseAimlFiles xs
-				      ; return $ joinParsers p ps
-				      }
+parseAimlFiles :: [String] -> Bool -> IO [Parser [String]]
+parseAimlFiles files exact = case files of
+							[] -> return [] --- $ [fail ["",""]]
+							x:xs -> do{ p<-parseAimlFile x exact
+								  ; ps<-parseAimlFiles xs exact
+								  ; return $ joinParsers p ps
+								  }
 
-parseAimlFile :: String -> IO [Parser [String]]
-parseAimlFile filePath = do{ p<-(parseFromFile parseAiml filePath)
-			   ; case p of
-				    Left _ -> return [] -- $ fail ["",""]
-				    Right x -> return x
-			   }
+parseAimlFile :: String -> Bool -> IO [Parser [String]]
+parseAimlFile filePath exact = do{ p<-(parseFromFile (parseAiml exact) filePath)
+							   ; case p of
+									Left _ -> return [] -- $ fail ["",""]
+									Right x -> return x
+							   }
 
 
 joinParsers :: [Parser [String]] -> [Parser [String]] -> [Parser [String]]
@@ -80,6 +80,12 @@ randomStart = string "<random>"
 randomEnd :: Parser String
 randomEnd = string "</random>"
 
+sraiStart :: Parser String
+sraiStart = string "<srai>"
+
+sraiEnd :: Parser String
+sraiEnd = string "</srai>"
+
 liStart :: Parser String
 liStart = string "<li>"
 
@@ -101,30 +107,30 @@ comments = do{ many (space <|> newline)
 	     }
 	   <|> many (space <|> newline)
 
-parseAiml :: Parser [Parser [String]]
-parseAiml = do{ manyTill anyChar (try aimlStart)
-	      ; comments
-	      ; categories <- manyTill cat (try aimlEnd)
-	      ; return categories
-	      }
+parseAiml :: Bool -> Parser [Parser [String]]
+parseAiml exact = do{ manyTill anyChar (try aimlStart)
+				  ; comments
+				  ; categories <- manyTill (cat exact) (try aimlEnd)
+				  ; return categories
+				  }
 
-category :: Parser (Parser [String])
-category = do{ catStart
-	     ; skipMany (space <|> newline)
-	     ; pat<-pattern
-	     ; skipMany (space <|> newline)
-	     ; th<-eitherThatOrEmptyString
-	     ; skipMany (space <|> newline)
-	     ; temp<-template
-	     ; skipMany (space <|> newline)
-	     ; catEnd
-	     ; return (buildParser pat th temp)
-	     }
+category :: Bool ->Parser (Parser [String])
+category exact = do{ catStart
+				 ; skipMany (space <|> newline)
+				 ; pat<-pattern
+				 ; skipMany (space <|> newline)
+				 ; th<-eitherThatOrEmptyString
+				 ; skipMany (space <|> newline)
+				 ; temp<-template
+				 ; skipMany (space <|> newline)
+				 ; catEnd
+				 ; return (buildParser pat th temp exact)
+				 }
 
 	      
-cat :: Parser (Parser [String])
-cat = do{ skipMany (space <|> newline)
-	; c<-category
+cat :: Bool -> Parser (Parser [String])
+cat exact = do{ skipMany (space <|> newline)
+	; c<-(category exact)
 	; skipMany (space <|> newline)
 	; return c
 	}
@@ -160,17 +166,27 @@ liWithSpace = do{ skipMany space
 		; return t
 		}
 
-random :: Parser String
-random = do{ randomStart
-	   ; t<-manyTill li (try randomEnd)
-	   ; let r = mkStdGen 32
+randomElement :: Parser String
+randomElement = do{ prev <- manyTill anyChar (try randomStart)
+	   ; t<-manyTill liWithSpace (try randomEnd)
+	   ; nxt <- many anyChar
+	   ; let r = mkStdGen 18276
 	   ; let (rawTargetNum, _) = next r
 	   ; let index = rawTargetNum `mod` (length t)
-	   ; return $ elementAt index t
+	   ; return $ prev ++ (elementAt index t) ++ nxt
 	   }
 	  <|>
-	  do{ many anyChar }
-	  
+	  do{ t <- many anyChar
+		  ; return $ "fail: " ++ t
+		  }
+	
+srai :: Parser (String, String, String)
+srai = do { prev <- manyTill anyChar (try sraiStart)
+		  ; t <- manyTill anyChar (try sraiEnd)
+		  ; nxt <- many anyChar
+		  ; return (prev, t, nxt)
+		  }
+	
 elementAt :: Int -> [String] -> String
 elementAt index str = case index of
 			   0 -> head str
@@ -179,9 +195,13 @@ elementAt index str = case index of
 eitherThatOrEmptyString :: Parser String
 eitherThatOrEmptyString = (try that) <|> (return "")
 
-buildParser :: String -> String -> String -> Parser [String]
-buildParser pat th temp = try (do{ (p1,pstar)<-(genParserFromPattern pat ("",""))
-				   --p<-(string pat) 
-				 ; return [p1,pstar,temp]
-				 }
-			      )
+buildParser :: String -> String -> String -> Bool -> Parser [String]
+buildParser pat th temp exact = if exact
+									then try (do{ p<-(string pat) 
+												; return [p,"",temp]
+												}
+											  )
+									else try (do{(p1,pstar)<-(genParserFromPattern pat ("",""))
+												; return [p1,pstar,temp]
+												}
+											  )
