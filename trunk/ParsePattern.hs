@@ -72,9 +72,9 @@ genParserFromWords :: [String] -> (String,String) -> Parser (String,String)
 genParserFromWords w (p,pstar) = case w of
 				    [] -> eol (p,pstar)
 				    x:xs -> case x of
-						"*" -> do{ manyTill1 anyChar (genParserFromWords xs) (p,pstar)
+						"*" -> do{ manyTill0 anyChar (genParserFromWords xs) (p,pstar)
 							  }
-						"_" -> do{ manyTill1 anyChar (genParserFromWords xs) (p,pstar)
+						"_" -> do{ manyTill0 anyChar (genParserFromWords xs) (p,pstar)
 							  }
 						_   -> do{ p1<-(string x)
 							 ; (skipMany (space <|> punctuation))
