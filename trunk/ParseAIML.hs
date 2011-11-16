@@ -169,7 +169,7 @@ liWithSpace = do{ skipMany space
 randomElement :: Parser String
 randomElement = try(do{ prev <- manyTill anyChar (try randomStart)
 	   ; t<-manyTill liWithSpace (try randomEnd)
-	   ; nxt <- many anyChar
+	   ; nxt <- manyTill anyChar eof
 	   ; let r = mkStdGen 18276
 	   ; let (rawTargetNum, _) = next r
 	   ; let index = rawTargetNum `mod` (length t)
@@ -183,7 +183,7 @@ randomElement = try(do{ prev <- manyTill anyChar (try randomStart)
 srai :: Parser (String, String, String)
 srai = do { prev <- manyTill anyChar (try sraiStart)
 		  ; t <- manyTill anyChar (try sraiEnd)
-		  ; nxt <- many anyChar
+		  ; nxt <- manyTill anyChar eof
 		  ; return (prev, t, nxt)
 		  }
 	
