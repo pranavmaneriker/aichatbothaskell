@@ -62,6 +62,24 @@ manyTill0 p end (e,st) = do{ (e1,st1)<-(try $ end (e,st))
 			   <|>
 			 do{ manyTill1 p end (e,st)
 			   }
+			   
+newManyTill1 :: Parser Char -> Parser String -> ((String,String) -> Parser (String,String)) -> (String,String) -> Parser (String,String)
+newManyTill1 p beforeEnd end (e,st) = do{ output<-p
+			  ; newManyTill0 p beforeEnd end (e++[output],st++[output])
+			  }
+			  <|>
+			  do{ fail ""
+			    }
+
+newManyTill0 :: Parser Char -> Parser String -> ((String,String) -> Parser (String,String)) -> (String,String) -> Parser (String,String)
+newManyTill0 p beforeEnd end (e,st) = do{ try (do{ sp<-beforeEnd
+						 ; (e1,st1)<-(end (e++sp,st))
+						 ; return (e1,st1)
+						 })
+					}
+					<|>
+					do{ newManyTill1 p beforeEnd end (e,st)
+					  }
 
 eol :: (String,String) -> Parser (String,String)
 eol (p,pstar) = do{ eof
@@ -70,12 +88,23 @@ eol (p,pstar) = do{ eof
 
 genParserFromWords :: [String] -> (String,String) -> Parser (String,String)
 genParserFromWords w (p,pstar) = case w of
-				    [] -> eol (p,pstar)
-				    x:xs -> case x of
-						"*" -> do{ manyTill0 anyChar (genParserFromWords xs) (p,pstar)
+				    [x] ->  case x of
+						"*" -> do{ p1<-many1 anyChar
+							 ; return (p++p1,pstar++p1)
 							  }
-						"_" -> do{ manyTill0 anyChar (genParserFromWords xs) (p,pstar)
+						"_" -> do{ p1<-many1 anyChar
+							 ; return (p++p1,pstar++p1)
+							 }
+						_   -> do{ p1<-(string x)
+							 ; return (p++p1,pstar)
+							 }
+				    x:xs -> case x of
+						"*" -> do{ newManyTill1 anyChar (many1 (space <|> punctuation)) (genParserFromWords xs) (p,pstar)
+							  -- manyTill0 anyChar (genParserFromWords xs) (p,pstar)
+							  }
+						"_" -> do{ newManyTill1 anyChar (many1 (space <|> punctuation)) (genParserFromWords xs) (p,pstar)
 							  }
 						_   -> do{ p1<-(string x)
-							 ; (skipMany (space <|> punctuation))
-							 ; (genParserFromWords xs (p++p1,pstar)) }
+							 ; sp<-(many1 (space <|> punctuation))
+							 ; (genParserFromWords xs (p++(p1++sp),pstar)) 
+							 }
