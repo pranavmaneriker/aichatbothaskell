@@ -25,7 +25,7 @@ processBotTags str = processedStr
 						replace18 = replace "<bot name=\"version\"/>" "0.1" replace17
 						replace19 = replace "<bot name=\"talkabout\"/>" "anything" replace18
 						replace20 = replace "<bot name=\"birthday\"/>" "10th November, 2011" replace19
-						replace21 = replace "<bot name=\"language\"/>" "English" replace20
+						replace21 = replace "<bot name=\"language\"/>" "Haskell" replace20
 						replace22 = replace "<bot name=\"phylum\"/>" "Bot" replace21			--check
 						replace23 = replace "<bot name=\"website\"/>" "http://www.program-o.com" replace22
 						replace24 = replace "<bot name=\"favoritebook\"/>" "Wheel of Time by Robert Jordan" replace23
@@ -47,7 +47,7 @@ processBotTags str = processedStr
 						replace40 = replace "<bot name=\"kindmusic\"/>" "rock" replace39
 						replace41 = replace "<bot name=\"os\"/>" "Windows" replace40
 						replace42 = replace "<bot name=\"question\"/>" "What do you like?" replace41
-						replace43 = replace "<bot name=\"vocabulary\"/>" "10000" replace42 -- number of words
+						replace43 = replace "<bot name=\"vocabulary\"/>" "100000" replace42 -- number of words
 						replace44 = replace "<bot name=\"dailyclients\"/>" "10" replace43
 						replace45 = replace "<bot name=\"nclients\"/>" "1" replace44
 						replace46 = replace "<bot name=\"totalclients\"/>" "100" replace45
@@ -61,7 +61,8 @@ processBotTags str = processedStr
 						replace54 = replace "<bot name=\"baseballteam\"/>" "Chicago Bulls" replace53
 						replace55 = replace "<bot name=\"footballteam\"/>" "Manchester United" replace54
 						replace56 = replace "<bot name=\"president\"/>" "Pratibha Patil" replace55
-						processedStr = replace56
+						replace57 = replace "<bot name=\"state\"/>" "Uttar Pradesh" replace56
+						processedStr = replace57
 						
 processChatSlang str = processedStr
 						where
@@ -77,4 +78,8 @@ processChatSlang str = processedStr
 						replace9 = replace " DOIN " " DOING " replace8
 						replace10 = replace " BBYE " " BYE " replace9
 						replace11 = replace " UR " " YOUR " replace10
-						processedStr = replace11
+						replace12 = replace " GUD " " GOOD " replace11
+						replace13 = replace " WASSUP " " HOW ARE YOU " replace12
+						replace14 = replace " THATS " " THAT IS " replace13
+						replace15 = replace " YEAH " " YES " replace14
+						processedStr = replace14
