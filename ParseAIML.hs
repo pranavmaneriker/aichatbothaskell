@@ -6,7 +6,9 @@ import ParsePattern
 
 import Random
 
-parseAimlFiles :: [String] -> Bool -> IO [Parser [String]]
+type ParserReturnType = [[String]]
+
+parseAimlFiles :: [String] -> Bool -> IO [Parser ParserReturnType]
 parseAimlFiles files exact = case files of
 							[] -> return [] --- $ [fail ["",""]]
 							x:xs -> do{ p<-parseAimlFile x exact
@@ -14,7 +16,7 @@ parseAimlFiles files exact = case files of
 								  ; return $ joinParsers p ps
 								  }
 
-parseAimlFile :: String -> Bool -> IO [Parser [String]]
+parseAimlFile :: String -> Bool -> IO [Parser ParserReturnType]
 parseAimlFile filePath exact = do{ p<-(parseFromFile (parseAiml exact) filePath)
 							   ; case p of
 									Left _ -> return [] -- $ fail ["",""]
@@ -22,7 +24,7 @@ parseAimlFile filePath exact = do{ p<-(parseFromFile (parseAiml exact) filePath)
 							   }
 
 
-joinParsers :: [Parser [String]] -> [Parser [String]] -> [Parser [String]]
+joinParsers :: [Parser ParserReturnType] -> [Parser ParserReturnType] -> [Parser ParserReturnType]
 joinParsers p1 p2 = case p1 of
 			 [] -> p2
 			 x:xs -> joinParsers xs $ x:p2
@@ -113,14 +115,14 @@ comments = do{ many (space <|> newline)
 	     }
 	   <|> many (space <|> newline)
 
-parseAiml :: Bool -> Parser [Parser [String]]
+parseAiml :: Bool -> Parser [Parser ParserReturnType]
 parseAiml exact = do{ manyTill anyChar (try aimlStart)
 				  ; comments
 				  ; categories <- manyTill (cat exact) (try aimlEnd)
 				  ; return categories
 				  }
 
-category :: Bool ->Parser (Parser [String])
+category :: Bool ->Parser (Parser ParserReturnType)
 category exact = do{ catStart
 				 ; skipMany (space <|> newline)
 				 ; pat<-pattern
@@ -134,7 +136,7 @@ category exact = do{ catStart
 				 }
 
 	      
-cat :: Bool -> Parser (Parser [String])
+cat :: Bool -> Parser (Parser ParserReturnType)
 cat exact = do{ skipMany (space <|> newline)
 	; c<-(category exact)
 	; skipMany (space <|> newline)
@@ -188,7 +190,7 @@ randomElement = try(do{ prev <- manyTill anyChar (try randomStart)
 
 thinkElement :: Parser String
 thinkElement = try(do{ prev <- manyTill anyChar (try thinkStart)
-	   ; manyTill liWithSpace (try thinkEnd)
+	   ; manyTill anyChar (try thinkEnd)
 	   ; nxt <- manyTill anyChar eof
 	   ; return $ prev ++ nxt
 	   })
@@ -196,12 +198,12 @@ thinkElement = try(do{ prev <- manyTill anyChar (try thinkStart)
 	  do{ t <- many anyChar
 		  ; return t
 		  }
-		  
-srai :: Parser (String, String, String)
-srai = do { prev <- manyTill anyChar (try sraiStart)
+
+srai :: [Parser ParserReturnType] -> ([Parser ParserReturnType] -> [Parser ParserReturnType] -> String -> ParserReturnType -> [String] -> String) -> Parser String
+srai parser getResponse = do { prev <- manyTill anyChar (try sraiStart)
 		  ; t <- manyTill anyChar (try sraiEnd)
 		  ; nxt <- manyTill anyChar eof
-		  ; return (prev, t, nxt)
+		  ; return (prev ++ (getResponse parser parser t [[""],[],[""],[]] []) ++ nxt)
 		  }
 	
 elementAt :: Int -> [String] -> String
@@ -212,13 +214,13 @@ elementAt index str = case index of
 eitherThatOrEmptyString :: Parser String
 eitherThatOrEmptyString = (try that) <|> (return "")
 
-buildParser :: String -> String -> String -> Bool -> Parser [String]
+buildParser :: String -> String -> String -> Bool -> Parser ParserReturnType
 buildParser pat th temp exact = if exact
 									then try (do{ p<-(string pat) 
-												; return [p,"",temp]
+												; return [[p],[],[temp],[]]
 												}
 											  )
-									else try (do{(p1,pstar)<-(genParserFromPattern pat ("",""))
-												; return [p1,pstar,temp]
+									else try (do{(p1,pstar,punder)<-(genParserFromPattern pat ("",[],[]))
+												; return [[p1],pstar,[temp],punder]
 												}
 											  )
