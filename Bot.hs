@@ -8,6 +8,7 @@ import ParseAIML
 import Directory
 import System.FilePath.Posix
 import Data.List
+import Data.Char
 
 import Control.Monad (unless)
 import Network.Socket hiding (recv)
@@ -28,7 +29,7 @@ startChat parser = do
 		      let processedMsg = (preProcess usermsg)
 		      let flag = isBye processedMsg
 		      putStr "Bot:"
-		      let reply = getResponse parser parser processedMsg ["","",""]
+		      let reply = getResponse parser parser processedMsg ["","",""] []
 		      sendResponse reply
 		      if flag then
 			stopChat
@@ -62,7 +63,7 @@ loop sock parser = do	 {
 									  do {
 										 ; msg <- recv conn 1024
 										 ; let processedMsg = (preProcess $ C.unpack msg)
-										 ; let reply = C.pack $ getResponse parser parser processedMsg ["","",""]
+										 ; let reply = C.pack $ getResponse parser parser processedMsg ["","",""] []
 										 ; unless (S.null msg) $ sendAll conn reply >> talk conn parser
 										 }
 
@@ -72,22 +73,26 @@ sendResponse = putStrLn
 stopChat = return ()
 isBye msg = ((compare msg "BYE") == EQ)
 
-preProcess :: String -> String
-preProcess msg = case (parse (manyTill anyChar (oneOf ".?!,")) "" (fmap toUpper msg)) of
-					Left _ -> (fmap toUpper msg)
-					Right a -> a
+trim :: String -> String
+trim = f . f where f = reverse . dropWhile isSpace
 
-postProcess :: [Parser [String]] -> String -> String
-postProcess parser msg = finalMsg
+preProcess :: String -> String
+preProcess msg = case (parse (manyTill anyChar (oneOf ".?!,")) "" (fmap toUpper $ trim msg)) of
+					Left _ -> (fmap toUpper $ trim msg)
+					Right a -> a
+						
+postProcess :: [Parser [String]] -> [String] -> String -> String
+postProcess parser visited msg = finalMsg
 				where
 				 pickRandom = case (parse randomElement "" msg) of
 						Left _ -> msg
 						Right a -> a
 				 recursed = case (parse srai "" pickRandom) of
 						Left _ -> pickRandom
-						Right (p,a,n) -> p ++ (getResponse parser parser a ["","",""]) ++ n
-				 finalMsg = pickRandom --recursed
+						Right (p,a,n) -> p ++ (getResponse parser parser (preProcess a) ["","",""] visited) ++ n
+				 finalMsg = recursed
 
+lengthWOSpace :: String -> Int
 lengthWOSpace = lengthWOSpace1 0
 				where
 					lengthWOSpace1 n str = case str of
@@ -99,21 +104,21 @@ lengthWOSpace = lengthWOSpace1 0
 contains :: [String] -> String -> Bool
 contains strList str = (length $ intersect strList [str]) > 0
 														
-getResponse :: [Parser [String]] -> [Parser [String]] -> String -> [String] -> String
-getResponse parser parserCopy input str = do{
+getResponse :: [Parser [String]] -> [Parser [String]] -> String -> [String] -> [String] -> String
+getResponse parser parserCopy input str visited = do{
 				  case parser of
 					[] -> finalMsg
 							where
-								finalMsg = postProcess parserCopy $ head $ tail $ tail str
+								finalMsg = postProcess parserCopy ((head $ tail $ tail str):visited) $ head $ tail $ tail str
 					x:xs -> case (parse x "" input) of
-						      Left _ -> getResponse xs parserCopy input str
-						      Right a -> if ((lengthWOSpace (head a)) > (lengthWOSpace (head str)))
-								    then getResponse xs parserCopy input a
-								    else if ((lengthWOSpace (head a)) < (lengthWOSpace (head str)))
-									    then getResponse xs parserCopy input str
-									    else if ((lengthWOSpace (head (tail a))) < (lengthWOSpace (head(tail str))))
-										 then getResponse xs parserCopy input a
-										 else getResponse xs parserCopy input str
+						      Left _ -> getResponse xs parserCopy input str visited
+						      Right a -> if ((lengthWOSpace (head a)) > (lengthWOSpace (head str)) && (not $ contains visited (head $ tail $ tail a)))
+								    then getResponse xs parserCopy input a visited
+								    else if ((lengthWOSpace (head a)) < (lengthWOSpace (head str)) && (not $ contains visited (head $ tail $ tail str)))
+									    then getResponse xs parserCopy input str visited
+									    else if ((lengthWOSpace (head (tail a))) < (lengthWOSpace (head(tail str))) && (not $ contains visited (head $ tail $ tail a)))
+										 then getResponse xs parserCopy input a visited
+										 else getResponse xs parserCopy input str visited
 			     }
 		      
 superParser :: String -> IO [Parser [String]]
