@@ -17,6 +17,8 @@ import qualified Data.ByteString as S
 import Network.Socket.ByteString (recv, sendAll)
 import qualified Data.ByteString.Char8 as C
 
+import ProcessBotTags
+
 port = "3000"
 
 main = do{ dir<-getCurrentDirectory
@@ -24,31 +26,31 @@ main = do{ dir<-getCurrentDirectory
 	 ; startChat parser
 	 }
 	   
-startChat parser = do
-		      putStr "Enter your chat:"
-		      usermsg<-getUserMsg
-		      let processedMsg = (preProcess usermsg)
-		      let flag = isBye processedMsg
-		      putStr "Bot:"
-		      let reply = getResponse parser parser processedMsg ["","",""] []
-		      sendResponse reply
-		      if flag then
-			stopChat
-			else do
-			  startChat parser
+-- startChat parser = do
+		      -- putStr "Enter your chat:"
+		      -- usermsg<-getUserMsg
+		      -- let processedMsg = (preProcess usermsg)
+		      -- let flag = isBye processedMsg
+		      -- putStr "Bot:"
+		      -- let reply = getResponse parser parser processedMsg ["","",""] []
+		      -- sendResponse reply
+		      -- if flag then
+			-- stopChat
+			-- else do
+			  -- startChat parser
 
--- startChat parser = withSocketsDo $
-    -- do {
-	   -- ; addrinfos <- getAddrInfo
-                    -- (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
-                    -- Nothing (Just port)
-       -- ; let serveraddr = head addrinfos
-       -- ; sock <- socket (addrFamily serveraddr) Stream defaultProtocol
-       -- ; bindSocket sock (addrAddress serveraddr)
-       -- ; listen sock 1
-	   -- ; loop sock parser
-       -- ; sClose sock
-	   -- }
+startChat parser = withSocketsDo $
+    do {
+	   ; addrinfos <- getAddrInfo
+                    (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
+                    Nothing (Just port)
+       ; let serveraddr = head addrinfos
+       ; sock <- socket (addrFamily serveraddr) Stream defaultProtocol
+       ; bindSocket sock (addrAddress serveraddr)
+       ; listen sock 1
+	   ; loop sock parser
+       ; sClose sock
+	   }
 
 loop sock parser = do	 {
 						 ;	putStrLn "Waiting for connection..."
@@ -71,7 +73,7 @@ loop sock parser = do	 {
 
 getUserMsg = getLine
 sendResponse = putStrLn
-stopChat = return ()
+-- stopChat = return ()
 isBye msg = ((compare msg "BYE") == EQ)
 
 trim :: String -> String
@@ -83,18 +85,7 @@ preProcess msg = preProcessedString
 						phaseOne = case (parse (manyTill anyChar (oneOf ".?!,")) "" (fmap toUpper msg)) of
 									Left _ -> (fmap toUpper msg)
 									Right a -> a
-						replace0 = replace "'" "" $ " " ++ phaseOne ++ " "
-						replace1 = replace " IM " "I AM " replace0
-						replace2 = replace " U " " YOU " replace1
-						replace3 = replace " R " " ARE " replace2
-						replace4 = replace " NT " " NOT " replace3
-						replace5 = replace " LETS " " LET US " replace4
-						replace6 = replace " WANNA " " WANT TO " replace5
-						replace7 = replace " HV " " HAVE " replace6
-						replace8 = replace " WS " " WAS " replace7
-						replace8 = replace " DOIN " " DOING " replace7
-						replace8 = replace " BBYE " " BYE " replace7
-						preProcessedString = trim replace8
+						preProcessedString = trim $ processChatSlang phaseOne
 						
 postProcess :: [Parser [String]] -> [String] -> String -> String
 postProcess parser visited msg = finalMsg
@@ -108,7 +99,8 @@ postProcess parser visited msg = finalMsg
 				 recursed = case (parse srai "" thoughtStrip) of
 						Left _ -> thoughtStrip
 						Right (p,a,n) -> p ++ (getResponse parser parser (preProcess a) ["","",""] visited) ++ n
-				 finalMsg = recursed
+				 
+				 finalMsg = processBotTags recursed
 
 -- lengthWOSpace :: String -> Int
 -- lengthWOSpace = lengthWOSpace1 0

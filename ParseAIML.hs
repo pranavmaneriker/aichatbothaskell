@@ -80,6 +80,12 @@ randomStart = string "<random>"
 randomEnd :: Parser String
 randomEnd = string "</random>"
 
+thinkStart :: Parser String
+thinkStart = string "<think>"
+
+thinkEnd :: Parser String
+thinkEnd = string "</think>"
+
 sraiStart :: Parser String
 sraiStart = string "<srai>"
 
@@ -179,7 +185,18 @@ randomElement = try(do{ prev <- manyTill anyChar (try randomStart)
 	  do{ t <- many anyChar
 		  ; return t
 		  }
-	
+
+thinkElement :: Parser String
+thinkElement = try(do{ prev <- manyTill anyChar (try thinkStart)
+	   ; manyTill liWithSpace (try thinkEnd)
+	   ; nxt <- manyTill anyChar eof
+	   ; return $ prev ++ nxt
+	   })
+	  <|>
+	  do{ t <- many anyChar
+		  ; return t
+		  }
+		  
 srai :: Parser (String, String, String)
 srai = do { prev <- manyTill anyChar (try sraiStart)
 		  ; t <- manyTill anyChar (try sraiEnd)
