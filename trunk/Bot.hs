@@ -9,11 +9,12 @@ import Directory
 import System.FilePath.Posix
 import Data.List
 import Data.Char
+import Data.List.Utils hiding (contains)
 
 import Control.Monad (unless)
 import Network.Socket hiding (recv)
 import qualified Data.ByteString as S
---import Network.Socket.ByteString (recv, sendAll)
+import Network.Socket.ByteString (recv, sendAll)
 import qualified Data.ByteString.Char8 as C
 
 port = "3000"
@@ -49,23 +50,23 @@ startChat parser = do
        -- ; sClose sock
 	   -- }
 
--- loop sock parser = do	 {
--- 						 ;	putStrLn "Waiting for connection..."
--- 						 ;	(conn, _) <- accept sock
--- 						 ;	putStrLn "Client connected."
--- 						 ;	talk conn parser
--- 						 ;	sClose conn
--- 						 ;	putStrLn "Client disconnected."
--- 						 ;	loop sock parser
--- 						 }
--- 				where
--- 				  talk conn parser =
--- 									  do {
--- 										 ; msg <- recv conn 1024
--- 										 ; let processedMsg = (preProcess $ C.unpack msg)
--- 										 ; let reply = C.pack $ getResponse parser parser processedMsg ["","",""] []
--- 										 ; unless (S.null msg) $ sendAll conn reply >> talk conn parser
--- 										 }
+loop sock parser = do	 {
+						 ;	putStrLn "Waiting for connection..."
+						 ;	(conn, _) <- accept sock
+						 ;	putStrLn "Client connected."
+						 ;	talk conn parser
+						 ;	sClose conn
+						 ;	putStrLn "Client disconnected."
+						 ;	loop sock parser
+						 }
+				where
+				  talk conn parser =
+									  do {
+										 ; msg <- recv conn 1024
+										 ; let processedMsg = (preProcess $ C.unpack msg)
+										 ; let reply = C.pack $ getResponse parser parser processedMsg ["","",""] []
+										 ; unless (S.null msg) $ sendAll conn reply >> talk conn parser
+										 }
 
 
 getUserMsg = getLine
@@ -77,9 +78,23 @@ trim :: String -> String
 trim = f . f where f = reverse . dropWhile isSpace
 
 preProcess :: String -> String
-preProcess msg = case (parse (manyTill anyChar (oneOf ".?!,")) "" (fmap toUpper $ trim msg)) of
-					Left _ -> (fmap toUpper $ trim msg)
-					Right a -> a
+preProcess msg = preProcessedString
+					where
+						phaseOne = case (parse (manyTill anyChar (oneOf ".?!,")) "" (fmap toUpper msg)) of
+									Left _ -> (fmap toUpper msg)
+									Right a -> a
+						replace0 = replace "'" "" $ " " ++ phaseOne ++ " "
+						replace1 = replace " IM " "I AM " replace0
+						replace2 = replace " U " " YOU " replace1
+						replace3 = replace " R " " ARE " replace2
+						replace4 = replace " NT " " NOT " replace3
+						replace5 = replace " LETS " " LET US " replace4
+						replace6 = replace " WANNA " " WANT TO " replace5
+						replace7 = replace " HV " " HAVE " replace6
+						replace8 = replace " WS " " WAS " replace7
+						replace8 = replace " DOIN " " DOING " replace7
+						replace8 = replace " BBYE " " BYE " replace7
+						preProcessedString = trim replace8
 						
 postProcess :: [Parser [String]] -> [String] -> String -> String
 postProcess parser visited msg = finalMsg
@@ -87,19 +102,22 @@ postProcess parser visited msg = finalMsg
 				 pickRandom = case (parse randomElement "" msg) of
 						Left _ -> msg
 						Right a -> a
-				 recursed = case (parse srai "" pickRandom) of
+				 thoughtStrip = case (parse thinkElement "" pickRandom) of
 						Left _ -> pickRandom
+						Right a -> a
+				 recursed = case (parse srai "" thoughtStrip) of
+						Left _ -> thoughtStrip
 						Right (p,a,n) -> p ++ (getResponse parser parser (preProcess a) ["","",""] visited) ++ n
 				 finalMsg = recursed
 
-lengthWOSpace :: String -> Int
-lengthWOSpace = lengthWOSpace1 0
-				where
-				lengthWOSpace1 n str = case str of
-							    [] -> n
-							    x:xs -> if (x == ' ')
-									then lengthWOSpace1 n xs
-									else lengthWOSpace1 (n+1) xs
+-- lengthWOSpace :: String -> Int
+-- lengthWOSpace = lengthWOSpace1 0
+				-- where
+				-- lengthWOSpace1 n str = case str of
+							    -- [] -> n
+							    -- x:xs -> if (x == ' ')
+									-- then lengthWOSpace1 n xs
+									-- else lengthWOSpace1 (n+1) xs
 														
 contains :: [String] -> String -> Bool
 contains strList str = (length $ intersect strList [str]) > 0
@@ -109,7 +127,7 @@ getResponse parser parserCopy input str visited = do{
 				  case parser of
 					[] -> finalMsg
 							where
-								finalMsg = show str-- postProcess parserCopy ((head $ tail $ tail str):visited) $ head $ tail $ tail str
+								finalMsg = postProcess parserCopy ((head $ tail $ tail str):visited) $ head $ tail $ tail str
 					x:xs -> case (parse x "" input) of
 						      Left _ -> getResponse xs parserCopy input str visited
 						      Right a -> if ((length (head a)) > (length (head str)) && (not $ contains visited (head $ tail $ tail a)))
