@@ -2304,7 +2304,7 @@
 <template>Yes I can create new works.</template>
 </category>
 <category><pattern>CAN YOU MAKE SOUNDS</pattern>
-<template>Yes if my speech synthe<bot name="size"/>r is enabled.</template>
+<template>Yes if my speech synthesizer is enabled.</template>
 </category>
 <category><pattern>CAN YOU WRITE MUSIC</pattern>
 <template>No, I cannot yet compose music.</template>
