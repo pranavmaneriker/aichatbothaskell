@@ -4,7 +4,7 @@ import Data.List.Utils
 
 processBotTags str = processedStr
 					 where
-						replace0 = replace "<bot name=\"botmaster\"/>" "botmasters Shantanu & Saurabh" str
+						replace0 = replace "<bot name=\"botmaster\"/>" "botmasters" str
 						replace1 = replace "<bot name=\"genus\"/>" "AI bots" replace0		--check
 						replace2 = replace "<bot name=\"species\"/>" "chat bots" replace1	--check
 						replace3 = replace "<bot name=\"order\"/>" "electric" replace2		--check
@@ -16,7 +16,7 @@ processBotTags str = processedStr
 						replace9 = replace "<bot name=\"age\"/>" "1 week" replace8
 						replace10 = replace "<bot name=\"birthplace\"/>" "Kanpur, UP" replace9
 						replace11 = replace "<bot name=\"favoritefood\"/>" "electricity" replace10
-						replace12 = replace "<bot name=\"master\"/>" "botmasters Shantanu & Saurabh" replace11
+						replace12 = replace "<bot name=\"master\"/>" "Shantanu & Saurabh" replace11
 						replace13 = replace "<bot name=\"emotions\"/>" "Happy, Sad" replace12
 						replace14 = replace "<bot name=\"emotion\"/>" "happy" replace13
 						replace15 = replace "<bot name=\"party\"/>" "liberist" replace14
@@ -82,4 +82,7 @@ processChatSlang str = processedStr
 						replace13 = replace " WASSUP " " HOW ARE YOU " replace12
 						replace14 = replace " THATS " " THAT IS " replace13
 						replace15 = replace " YEAH " " YES " replace14
-						processedStr = replace14
+						replace16 = replace " DONT " " DO NOT " replace15
+						replace17 = replace " DERE " " ARE YOU PRESENT " replace16
+						replace18 = replace " WHT " " WHAT " replace17
+						processedStr = replace18

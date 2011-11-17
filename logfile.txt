@@ -1,0 +1,4 @@
+2011-11-17 03:46:42.8878901 UTC -> User : hi
+2011-11-17 03:46:42.8878901 UTC -> Bot : Hi there.  What is your name?
+2011-11-17 03:47:00.5058978 UTC -> User : how r u doing??
+2011-11-17 03:47:00.5058978 UTC -> Bot : Everything is going extremely well.
