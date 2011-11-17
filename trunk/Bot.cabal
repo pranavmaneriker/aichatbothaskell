@@ -19,7 +19,9 @@ Build-Depends:       base,
 					 mtl >= 2.0,
 					 filepath >= 1.2,
 					 directory >= 1.1,
-					 bytestring >= 0.9					 
+					 bytestring >= 0.9,
+					 time >= 1.2,
+					 haskell98
 
 Executable:          Bot
 Main-is:             Bot.hs
