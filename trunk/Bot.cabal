@@ -1,0 +1,25 @@
+Name:                Bot
+Version:             0.1
+Synopsis:            AI Chat Bot
+Description:         Chatty is an AI chat bot you can chat with
+License:             GPL
+License-file:        LICENSE
+Author:              Shantanu Saraswat, Saurabh Saxena
+Maintainer:          Shantanu Saraswat <saraswat@iitk.ac.in>, Saurabh Saxena <saurax@iitk.ac.in>
+Build-Depends:       base,
+					 cgi >= 3001.1.8.2,
+					 xhtml >=3000.2.0.4,
+					 MissingH >= 1.1.1.0,
+					 hslogger >= 1.1.5,
+					 utf8-string >= 0.3.7,
+					 regex-posix >= 0.95.1,
+					 random >= 1.0.0.3,
+					 parsec >= 3.1.1,
+					 network >= 2.0,
+					 mtl >= 2.0,
+					 filepath >= 1.2,
+					 directory >= 1.1,
+					 bytestring >= 0.9					 
+
+Executable:          Bot
+Main-is:             Bot.hs
